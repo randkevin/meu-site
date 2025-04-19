@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flashcards Japonês-Português</title>
+  <style>
+    /* Estilos iguais aos anteriores (sem mudanças) */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+    }
+
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .flashcard-container {
+      perspective: 1000px;
+      width: 500px;
+      height: 400px;
+    }
+
+    .flashcard {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s;
+      cursor: pointer;
+    }
+
+    .flashcard.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 10px;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .flashcard-front {
+      background-color: #fff;
+    }
+
+    .flashcard-back {
+      background-color: #f0f0f0;
+      transform: rotateY(180deg);
+    }
+
+    .card-image {
+      width: 200px;
+      height: 150px;
+      object-fit: contain;
+      margin-bottom: 20px;
+    }
+
+    .japanese {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .romaji {
+      font-size: 1.2em;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .translation {
+      font-size: 1.5em;
+      color: #333;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 500px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+    }
+
+    .easy {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .medium {
+      background-color: #FFC107;
+      color: black;
+    }
+
+    .hard {
+      background-color: #F44336;
+      color: white;
+    }
+
+    .shuffle {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .progress {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .feedback {
+      font-size: 1.2em;
+      color: green;
+      margin-top: 10px;
+      min-height: 24px;
+    }
+
+    .logout {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+  </style>
+</head>
+<body>
+  <button class="logout" onclick="window.location.href='/logout'">Sair</button>
+  <div class="wrapper">
+    <div class="flashcard-container">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="flashcard-front">
+          <img class="card-image" id="card-image" src="" alt="Imagem representativa">
+          <div class="japanese" id="japanese-text"></div>
+          <div>Clique para ver a tradução</div>
+        </div>
+        <div class="flashcard-back">
+          <img class="card-image" id="card-image-back" src="" alt="Imagem representativa">
+          <div class="japanese" id="japanese-text-back"></div>
+          <div class="romaji" id="romaji-text"></div>
+          <div class="translation" id="portuguese-text"></div>
+          <div>Clique para voltar</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="hard" onclick="rateCard('hard')">Difícil</button>
+      <button class="medium" onclick="rateCard('medium')">Médio</button>
+      <button class="easy" onclick="rateCard('easy')">Fácil</button>
+      <button class="shuffle" onclick="shuffleCards()">🔀 Embaralhar</button>
+    </div>
+
+    <div class="progress">
+      <span id="progress-text">Card 1 de X</span>
+    </div>
+    <div class="feedback" id="feedback-text"></div>
+  </div>
+
+  <audio id="sound-easy" src="https://cdn.pixabay.com/audio/2022/03/16/audio_501ce14848.mp3"></audio>
+  <audio id="sound-medium" src="https://cdn.pixabay.com/audio/2022/02/23/audio_d53abf7449.mp3"></audio>
+  <audio id="sound-hard" src="https://cdn.pixabay.com/audio/2022/03/02/audio_dcb9d2d243.mp3"></audio>
+
+  <script>
+       const originalCards = [
+    { japanese: "りんご", romaji: "ringo", portuguese: "maçã", image: "https://cdn.pixabay.com/photo/2016/01/05/13/58/apple-1122537_640.jpg" },
+    { japanese: "いぬ", romaji: "inu", portuguese: "cachorro", image: "https://cdn.pixabay.com/photo/2016/12/13/05/15/puppy-1903313_640.jpg" },
+    { japanese: "ねこ", romaji: "neko", portuguese: "gato", image: "https://cdn.pixabay.com/photo/2017/02/20/18/03/cat-2083492_640.jpg" },
+    { japanese: "みず", romaji: "mizu", portuguese: "água", image: "https://fontagua.com.br/wp-content/uploads/2023/01/agua-fresca-em-um-copo.jpg" },
+    { japanese: "ほん", romaji: "hon", portuguese: "livro", image: "https://viverdeblog.com/wp-content/uploads/2017/04/como-escrever-um-livro-topo.png" },
+    { japanese: "やま", romaji: "yama", portuguese: "montanha", image: "https://conceitos.com/wp-content/uploads/2014/07/Montanha.jpg" },
+    { japanese: "くるま", romaji: "kuruma", portuguese: "carro", image: "https://cdn.autopapo.com.br/box/uploads/2022/06/30175029/maxda-rx7-velozes-e-furiosos-3-han.jpg" },
+    { japanese: "ひ", romaji: "hi", portuguese: "fogo", image: "https://w7.pngwing.com/pngs/745/989/png-transparent-fire-flame-logo-hot-design-pattern-emblem-symbol.png" },
+    { japanese: "そら", romaji: "sora", portuguese: "céu", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQns7O5IhRv2qNM9fRcjZQ95vWlCU7La5HMCQ&s" },
+    { japanese: "つき", romaji: "tsuki", portuguese: "lua", image: "https://static.preparaenem.com/2022/06/lua.jpg" },
+    { japanese: "でんしゃ", romaji: "densha", portuguese: "trem", image: "https://img.freepik.com/vetores-premium/um-desenho-de-um-trem-azul-com-as-palavras-o-trem-nele_9493-75439.jpg" },
+	{ japanese: "ちかてつ", romaji: "chikatetsu", portuguese: "metrô", image: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/6c/92/45/2015113.jpg?w=900&h=500&s=1" },
+    { japanese: "ともだち", romaji: "tomodachi", portuguese: "amigo", image: "https://img.freepik.com/vetores-premium/crianca-dizer-ola-ao-amigo-e-ir-para-a-escola-juntos_97632-6534.jpg" },
+    { japanese: "て", romaji: "te", portuguese: "mão", image: "https://media.istockphoto.com/id/462795637/pt/foto/m%C3%A3o-gestos-no-fundo-branco.jpg?s=612x612&w=0&k=20&c=qfHwO5KvMuInzIXzNreq8gxrq89WTN5QXCbfyP-YhX8=" },
+    { japanese: "くち", romaji: "kuchi", portuguese: "boca", image: "https://www.portaldoholanda.com.br/sites/default/files/imagecache/portal2014_fotonoticiagrande/portaldoholanda-679279-imagem-foto-amazonas.jpg" },
+    { japanese: "あし", romaji: "ashi", portuguese: "perna/pé", image: "https://img.freepik.com/fotos-gratis/pernas-femininas-perfeitas-isoladas-no-fundo-branco_231208-10241.jpg" },
+    { japanese: "あたま", romaji: "atama", portuguese: "cabeça", image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiX_6aO_pUT13c3_mGqHJwLdVFFH6Ub3JP8tyo3GolJhI0NFBg1Dph5drozi8GbQBKHl8VrJqfHtcTIJ3YbNZOHLFshvlRLUgkSyAP8KMN2qMWuCsXO40Z0CMgbqlJkNxY1iGuGKG_t8Kh7/s1600/lairto+martins.JPG" },
+    { japanese: "かみのけ", romaji: "kaminoke", portuguese: "cabelo", image: "https://www.p-antiaging.com/beautycolumn/wp-content/uploads/2021/02/AdobeStock_321624147-scaled.jpeg" },
+    { japanese: "け", romaji: "ke", portuguese: "pêlo", image: "https://images.gutefrage.net/media/fragen/bilder/kann-man-als-frau-auch-solche-haarigen-arme-haben/0_big.jpg?v=1681027908000" },
+    { japanese: "かお", romaji: "kao", portuguese: "rosto", image: "https://www.biteki.com/wp-content/uploads/2019/02/201904gniau1190114-1005.jpg" },
+    { japanese: "ひたい", romaji: "hitai", portuguese: "testa", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAtxnDqbLHQd-EVNUEuZIjeze5GCdJOPMX3ZhfPolzXsx1Kktgxa7QDEukIMs6WzC55Cs&usqp=CAU" },
+    { japanese: "まゆ", romaji: "mayu", portuguese: "sobrancelhas", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRGz6zCsRu_E83r22UHoXSNsdBkUI2A_pnk-UTpckmg2svQqFXp4HpJqnJlzFwwwzmSJEs&usqp=CAU" },
+    { japanese: "まつげ", romaji: "matsuge", portuguese: "cílios", image: "https://blog.carmenlee.com.br/wp-content/uploads/2024/07/Anime-lashes.png" },
+    { japanese: "め", romaji: "me", portuguese: "olhos", image: "https://www.motobi.jp/wp-content/uploads/2017/12/pixta_3877911_L.jpg" },
+    { japanese: "はな", romaji: "hana", portuguese: "nariz", image: "https://www.draruizcastilla.com/wp-content/uploads/2015/04/Rinoplastia.jpg" },
+    { japanese: "みみ", romaji: "mimi", portuguese: "orelhas", image: "https://chibanewtown-jibika.com/images/ear1.jpg" },
+    { japanese: "ほほ", romaji: "hoho", portuguese: "bochechas", image: "https://rodolfooliveiracp.com.br/wp-content/uploads/2018/03/40539249_l.jpg" },
+    { japanese: "は", romaji: "ha", portuguese: "dente", image: "https://odontologiacontatore.com.br/wp-content/uploads/2022/01/como-melhorar-a-estetica-dos-dentes.jpeg" },
+    { japanese: "くちびる", romaji: "kuchibiru", portuguese: "lábios", image: "https://www.pure-clinic.com/shutterstock_580054933-750.jpg" },
+    { japanese: "した", romaji: "shita", portuguese: "língua", image: "https://p1.itc.cn/images01/20210611/fa798e3682fe401cbc861f52525a0467.jpeg" },
+    { japanese: "あご", romaji: "ago", portuguese: "queixo", image: "https://kimini.online/blog/wp-content/uploads/2022/05/pixta_34839069_M-1200x675.jpg" },
+    { japanese: "のど", romaji: "nodo", portuguese: "garganta", image: "https://thumbs.dreamstime.com/b/sore-throat-inflammation-redness-pain-spreads-around-neck-36447552.jpg" },
+    { japanese: "くび", romaji: "kubi", portuguese: "pescoço", image: "https://mairaplatero.com.br/wp-content/uploads/2025/01/linhas-no-pescoco-capa.jpg" },
+    { japanese: "かた", romaji: "kata", portuguese: "ombro", image: "https://laserum.pt/wp-content/uploads/2023/05/hombro.png" },
+    { japanese: "うで", romaji: "ude", portuguese: "braço", image: "https://static.wixstatic.com/media/486e5a_cb6a3215bbe440bf93f62688a1905c4b~mv2.jpg/v1/fill/w_470,h_322,al_c,lg_1,q_80,enc_avif,quality_auto/AdobeStock_119196181(1).jpg" },
+    { japanese: "ひじ", romaji: "hiji", portuguese: "cotovelo", image: "https://cdn.nhathuoclongchau.com.vn/unsafe/800x0/filters:quality(95)/https://cms-prod.s3-sgn09.fptcloud.com/nguyen_nhan_tap_plank_bi_tham_khuyu_tay_va_cach_khac_phuc_2_498ccee082.jpg" },
+    { japanese: "てくび", romaji: "tekubi", portuguese: "pulso", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Nadgarstek_%28ubt%29.jpeg/250px-Nadgarstek_%28ubt%29.jpeg" },
+    { japanese: "ゆび", romaji: "yubi", portuguese: "dedo", image: "https://i.gzn.jp/img/2024/10/31/yubi-dice/00.jpg" },
+    { japanese: "つめ", romaji: "tsume", portuguese: "unha", image: "https://pds.exblog.jp/pds/1/201003/13/30/c0051030_12262415.jpg" },
+    { japanese: "むね", romaji: "mune", portuguese: "peito", image: "https://www.wendelluguetto.com.br/wp-content/uploads/2022/06/Silicone-no-peitoral-masculino.png" },
+    { japanese: "はら", romaji: "hara", portuguese: "barriga", image: "https://dreversonmalluta.com.br/wp-content/uploads/2023/08/barriga-inchada-scaled.jpg" },
+    { japanese: "こし", romaji: "koshi", portuguese: "cintura", image: "https://leblog.com.br/wp-content/uploads/2013/09/cintura.jpg" },
+    { japanese: "しり", romaji: "shiri", portuguese: "nádegas", image: "https://www.kyoritsu-biyo.com/column/wordpress/wp-content/uploads/2022/09/%E3%81%8A%E5%B0%BB%E3%82%92%E5%BC%B7%E8%AA%BF%E3%81%97%E3%81%A6%E3%81%84%E3%82%8B%E5%A5%B3%E6%80%A7.jpg" },
+    { japanese: "せなか", romaji: "senaka", portuguese: "costas", image: "https://thumb-cdn.soluall.net/prod/shp_products/sp1280fw/62b350f0-32f4-428d-a13d-2bb9ac1e09ff/62b350f0-842c-4615-accb-2bb9ac1e09ff.jpg" },
+    { japanese: "もも", romaji: "momo", portuguese: "coxa", image: "https://www.tuliosouza.com.br/wp-content/uploads/2023/10/Captura-de-tela-2023-09-20-204220_11zon.jpg" },
+    { japanese: "ひざ", romaji: "hiza", portuguese: "joelho", image: "https://earthcare.co.jp/blog/wp-content/uploads/2020/11/care-for-dry-knees.jpg" },
+    { japanese: "すね", romaji: "sune", portuguese: "canela", image: "https://dokodemofit.com/wp-content/uploads/2018/07/af60343e4efa37a923baf39fea8e49ce.jpg" },
+    { japanese: "あしくび", romaji: "ashikubi", portuguese: "tornozelo", image: "https://www.kyoritsu-biyo.com/column/wordpress/wp-content/uploads/2022/05/%E8%B6%B3%E9%A6%96%E3%81%AE%E7%94%BB%E5%83%8F.jpg" },
+    { japanese: "おやゆび", romaji: "oyayubi", portuguese: "dedo polegar", image: "https://dicionario.priberam.org/images/dplp/polegar.jpg" },
+    { japanese: "ひとさしゆび", romaji: "hitosashiyubi", portuguese: "dedo indicador", image: "https://static3.depositphotos.com/1007649/244/i/450/depositphotos_2443204-stock-photo-businessman-index-finge.jpg" },
+    { japanese: "なかゆび", romaji: "nakayubi", portuguese: "dedo médio", image: "https://t3.ftcdn.net/jpg/00/59/12/64/360_F_59126417_Jd1DMy8pY30dGMo7ffDjzMUHOkcEVIxf.jpg" },
+    { japanese: "くすりゆび", romaji: "kusuriyubi", portuguese: "dedo anular", image: "https://png.pngtree.com/background/20231019/original/pngtree-a-raised-ring-finger-ring-nail-inch-photo-picture-image_5624515.jpg" },
+    { japanese: "こゆび", romaji: "koyubi", portuguese: "dedo mínimo/mindinho", image: "https://media.istockphoto.com/id/618315326/ja/%E3%82%B9%E3%83%88%E3%83%83%E3%82%AF%E3%83%95%E3%82%A9%E3%83%88/%E5%B0%8F%E6%8C%87%E3%82%92%E4%BC%B8%E3%81%B0%E3%81%97%E3%81%A6%E6%8B%B3%E3%81%A7%E6%8F%A1%E3%82%8A%E3%81%97%E3%82%81%E3%81%9F%E5%AD%A4%E7%AB%8B.jpg?s=612x612&w=0&k=20&c=t58Qo7c0ZxFqtYkJK1VFcLPWRWq74JSIAhTShv-X2LY=" },
+    { japanese: "ないぞう", romaji: "naizou", portuguese: "órgãos internos", image: "https://medical.kyowakirin.co.jp/support/illust/img/archive/fukubu_mae.png" },
+    { japanese: "のう", romaji: "nou", portuguese: "cérebro", image: "https://static.escolakids.uol.com.br/2022/12/cerebro-humano.jpg" },
+    { japanese: "きんにく", romaji: "kinniku", portuguese: "músculo", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHHrCq8G_6HgQNZeBls9WXfxgwjVEQmKZGnA&s" },
+    { japanese: "しんぞう", romaji: "shinzou", portuguese: "coração", image: "https://booth.pximg.net/9b436d1b-ecc9-44b3-a4c7-a14f856c56f0/i/2926140/7110f908-d1fb-4dcd-bc39-1180b3916f40_base_resized.jpg" },
+    { japanese: "かんぞう", romaji: "kanzou", portuguese: "fígado", image: "https://museuanatomia.ufms.br/files/2020/09/figado_outro-300x204.jpg" },
+    { japanese: "ちょう", romaji: "chou", portuguese: "intestino", image: "https://drpauloklein.com.br/media/5cfaa75625c3d.png" },
+    { japanese: "じんぞう", romaji: "jinzou", portuguese: "rim", image: "https://hebertcapucinefrologista.com.br/wp-content/uploads/2021/09/medico-dos-rins-uberaba-1024x726.png.webp" },
+    { japanese: "はい", romaji: "hai", portuguese: "pulmão", image: "https://img.freepik.com/vetores-gratis/um-pulmao-vermelho-com-um-fundo-branco-e-a-palavra-coracao-nele_1308-153031.jpg?semt=ais_hybrid&w=740" },
+    { japanese: "い", romaji: "i", portuguese: "estômago", image: "https://static.preparaenem.com/2021/10/estomago.jpg" },
+    { japanese: "ぼうこう", romaji: "boukou", portuguese: "bexiga", image: "https://cdn.mainichi.jp/vol1/2020/04/13/20200413med00m070003000q/8.jpg?1" },
+    { japanese: "しきゅう", romaji: "shikyuu", portuguese: "útero", image: "https://static.mundoeducacao.uol.com.br/mundoeducacao/conteudo_legenda/7e59f1f4460ce01d4344bbbc5678c356.jpg" },
+    { japanese: "ほね", romaji: "hone", portuguese: "ossos", image: "https://static.mundoeducacao.uol.com.br/mundoeducacao/2023/01/ilustracao-dos-ossos-do-corpo-humano.jpg" },
+    { japanese: "どうみゃく", romaji: "doumyaku", portuguese: "artérias", image: "https://static.todamateria.com.br/upload/ar/te/arterias-og.jpg?class=ogImageSquare" },
+  { japanese: "とけい", romaji: "tokei", portuguese: "relógio", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3-G-1AllOw5GkOn2koKwm7q0rzzGYZPgPPA&s" },
+  { japanese: "かさ", romaji: "kasa", portuguese: "guarda-chuva", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8DpD1yD_lM0C95IIDcR-PlDrnbxTMzypoWA&s" },
+  { japanese: "でんわ", romaji: "denwa", portuguese: "telefone", image: "https://m.media-amazon.com/images/I/519804F2ZtL._AC_UF894,1000_QL80_.jpg" },
+  { japanese: "かばん", romaji: "kaban", portuguese: "bolsa/mochila", image: "https://img.irroba.com.br/fit-in/600x600/filters:fill(fff):quality(80)/dhaffyco/catalog/lorena-preto-frente.jpg" },
+  { japanese: "くつ", romaji: "kutsu", portuguese: "sapato", image: "https://images.tcdn.com.br/img/editor/up/707932/IMAGENS_DESCRICAO_SITE_SCARPAZI_5.png" },
+  { japanese: "ふく", romaji: "fuku", portuguese: "roupa", image: "https://img.freepik.com/vetores-premium/colecao-de-vestuario-de-verao-da-moda-feminina-conjunto-de-roupas-femininas-ou-conjunto-guarda-roupa-feminino_547662-807.jpg" },
+  { japanese: "ぼうし", romaji: "boushi", portuguese: "chapéu", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7eT2M2lJvDX0RMlNq7LWYDwfatJvlWYOefJVhXQUH8VIGbcjKwh-9vJerE6fizoN8TBg&usqp=CAU" },
+  { japanese: "めがね", romaji: "megane", portuguese: "óculos", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRKzhdzgeGEqktZf8x3YV3dthlhr1qBVshWwg&s" },
+  { japanese: "ゆき", romaji: "yuki", portuguese: "neve", image: "https://s2.glbimg.com/pPmizZbZCPyoT-k1LAxqM3ltL3M=/620x430/e.glbimg.com/og/ed/f/original/2020/05/13/gettyimages-1169568782.jpg" },
+  { japanese: "かぜ", romaji: "kaze", portuguese: "vento", image: "https://img.freepik.com/vetores-premium/conjunto-desenhado-a-mao-desenho-de-rajada-de-vento-isolado-em-fundo-branco-ilustracao-vetorial-estilo-desenhado-a-mao_69626-638.jpg" },
+  { japanese: "たいよう", romaji: "taiyou", portuguese: "sol", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTd5UqRK5BEZdbTmbML2w0QlB9LgKjPOkBej7jn7mKAlmOcg9Rj9EVFvKHOCWG8PrfIXas&usqp=CAU" },
+  { japanese: "うみ", romaji: "umi", portuguese: "mar", image: "https://img.freepik.com/fotos-premium/bela-vista-do-mar-de-verao-com-fundo-azul-do-oceano_68060-695.jpg?semt=ais_hybrid&w=740" },
+  { japanese: "かわ", romaji: "kawa", portuguese: "rio", image: "https://nautica.com.br/wp-content/uploads/2023/06/nilo-amazonas-1.bx_.jpg" },
+  { japanese: "いえ", romaji: "ie", portuguese: "casa", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQutEKUaH9PNQwsckt9HUmAoKmNZsbn4hJmsA&s" },
+  { japanese: "まど", romaji: "mado", portuguese: "janela", image: "https://cdn.awsli.com.br/600x450/118/118395/produto/4399939/2e05b1076e.jpg" },
+  { japanese: "ドア", romaji: "doa", portuguese: "porta", image: "https://w7.pngwing.com/pngs/79/433/png-transparent-door-doors-and-windows-portal-security-door.png" },
+  { japanese: "いす", romaji: "isu", portuguese: "cadeira", image: "https://fassinadecor.cdn.magazord.com.br/img/2023/07/produto/908/dsc-7435-1.jpg?ims=fit-in/690x690/filters:fill(white)" },
+  { japanese: "つくえ", romaji: "tsukue", portuguese: "mesa/escrivaninha", image: "https://cdn.awsli.com.br/2500x2500/214/214875/produto/55704212/7c77da37b3.jpg" },
+  { japanese: "へや", romaji: "heya", portuguese: "quarto/cômodo", image: "https://i.pinimg.com/originals/90/19/c9/9019c9f6808db9badea8e57145e188b2.png" },
+  { japanese: "トイレ", romaji: "toire", portuguese: "banheiro", image: "https://casa.abril.com.br/wp-content/uploads/2024/08/balizadores-iluminam-corredor-ape-105-m-pensado-casal-de-idosos-larissa-albuquerque-16-banheiro.jpg?quality=70&strip=info&w=720&crop=1" },
+  { japanese: "にわ", romaji: "niwa", portuguese: "jardim", image: "https://www.branco.com.br/content/dam/Branco/Latin%20America/Portuguese-BR/Images/newsroom/primavera%2002.jpg" },
+  { japanese: "けいたい", romaji: "keitai", portuguese: "celular", image: "https://upload.wikimedia.org/wikipedia/commons/f/f6/NTT_DoCoMo_FOMA_P706imu_open.jpg" },
+  { japanese: "コンピューター", romaji: "konpyuutaa", portuguese: "computador", image: "https://cdn.awsli.com.br/600x1000/2539/2539199/produto/235872792/computador-completo1-aphby15ud4.jpg" },
+  { japanese: "でんき", romaji: "denki", portuguese: "eletricidade/luz", image: "https://conteudo.imguol.com.br/c/noticias/83/2021/07/30/lampada-energia-eletrica-conta-de-luz-1627657898726_v2_1x1.jpg" },
+  { japanese: "エレベーター", romaji: "erebeetaa", portuguese: "elevador", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRKBvPSW_g5lvbqnynfFBhAibkchT3oBnHx9Q&s" },	
+
+   ];
+
+    let cards = [];
+    let currentCardIndex = 0;
+    let isFlipped = false;
+
+    const counters = {
+      easy: 0,
+      medium: 0,
+      hard: 0
+    };
+
+    function shuffleCards() {
+      cards = [...cards].sort(() => Math.random() - 0.5);
+      currentCardIndex = 0;
+      isFlipped = false;
+      updateCard();
+      showFeedback("", "blue");
+    }
+
+    function updateCard() {
+      const card = cards[currentCardIndex];
+      document.getElementById('japanese-text').textContent = card.japanese;
+      document.getElementById('japanese-text-back').textContent = card.japanese;
+      document.getElementById('romaji-text').textContent = card.romaji;
+      document.getElementById('portuguese-text').textContent = card.portuguese;
+      document.getElementById('card-image').src = card.image;
+      document.getElementById('card-image-back').src = card.image;
+      document.getElementById('progress-text').textContent = `Card ${currentCardIndex + 1} de ${cards.length}`;
+      document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+    }
+
+    function flipCard() {
+      isFlipped = !isFlipped;
+      updateCard();
+    }
+
+    function rateCard(difficulty) {
+      counters[difficulty]++;
+      playSound(difficulty);
+      showFeedback(`Marcado como ${difficulty}`, getColor(difficulty));
+
+      const current = cards[currentCardIndex];
+      if (difficulty === "hard") {
+        cards.push(current);
+      } else if (difficulty === "medium") {
+        cards.splice(currentCardIndex + 2, 0, current);
+      }
+
+      currentCardIndex++;
+      if (currentCardIndex >= cards.length) {
+        currentCardIndex = 0;
+      }
+
+      isFlipped = false;
+      updateCard();
+      salvarProgresso();
+    }
+
+    function showFeedback(text, color) {
+      const feedback = document.getElementById('feedback-text');
+      feedback.textContent = text;
+      feedback.style.color = color;
+    }
+
+    function getColor(difficulty) {
+      return {
+        easy: "#4CAF50",
+        medium: "#FFC107",
+        hard: "#F44336"
+      }[difficulty] || "black";
+    }
+
+    function playSound(difficulty) {
+      const sound = document.getElementById(`sound-${difficulty}`);
+      if (sound) {
+        sound.currentTime = 0;
+        sound.play();
+      }
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/user-info');
+        if (!res.ok) throw new Error();
+        const user = await res.json();
+        console.log("Usuário logado:", user.name);
+      } catch (err) {
+        alert("Você precisa estar logado para acessar essa página.");
+        window.location.href = "/";
+      }
+    }
+
+    async function carregarProgresso() {
+      try {
+        const res = await fetch('/progresso');
+        const progresso = await res.json();
+
+        if (progresso.cards && progresso.cards.length > 0) {
+          cards = progresso.cards;
+        } else {
+          cards = [...originalCards];
+        }
+
+        if (progresso.counters) {
+          counters.easy = progresso.counters.easy || 0;
+          counters.medium = progresso.counters.medium || 0;
+          counters.hard = progresso.counters.hard || 0;
+        }
+
+        shuffleCards();
+      } catch (err) {
+        console.error("Erro ao carregar progresso:", err);
+        cards = [...originalCards];
+        shuffleCards();
+      }
+    }
+
+    async function salvarProgresso() {
+      try {
+        await fetch('/progresso', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cards,
+            counters
+          })
+        });
+      } catch (err) {
+        console.error("Erro ao salvar progresso:", err);
+      }
+    }
+
+    // Inicialização
+    checkAuth().then(carregarProgresso);
+  </script>
+</body>
+</html>

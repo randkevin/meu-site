@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Flashcards Japonês-Português</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom right, #3a7bd5, #8e44ad, #ffffff);
+            background-attachment: fixed;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #3a7bd5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #2d62aa;
+        }
+        
+        .switch-form {
+            text-align: center;
+            margin-top: 20px;
+            color: #555;
+        }
+        
+        .switch-form a {
+            color: #3a7bd5;
+            text-decoration: none;
+        }
+        
+        .switch-form a:hover {
+            text-decoration: underline;
+        }
+        
+        .message {
+            text-align: center;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flashcards Japonês</h1>
+        
+        <div id="login-form">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" required>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Senha:</label>
+                <input type="password" id="login-password" required>
+            </div>
+            <button onclick="login()">Entrar</button>
+            <div class="switch-form">
+                Não tem uma conta? <a href="#" onclick="toggleForm('register')">Registre-se</a>
+            </div>
+        </div>
+        
+        <div id="register-form" style="display: none;">
+            <h2>Registro</h2>
+            <div class="form-group">
+                <label for="register-name">Nome:</label>
+                <input type="text" id="register-name" required>
+            </div>
+            <div class="form-group">
+                <label for="register-email">Email:</label>
+                <input type="email" id="register-email" required>
+            </div>
+            <div class="form-group">
+                <label for="register-password">Senha:</label>
+                <input type="password" id="register-password" required>
+            </div>
+            <button onclick="register()">Registrar</button>
+            <div class="switch-form">
+                Já tem uma conta? <a href="#" onclick="toggleForm('login')">Faça login</a>
+            </div>
+        </div>
+        
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        function toggleForm(form) {
+            if (form === 'login') {
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('register-form').style.display = 'none';
+            } else {
+                document.getElementById('login-form').style.display = 'none';
+                document.getElementById('register-form').style.display = 'block';
+            }
+            document.getElementById('message').style.display = 'none';
+        }
+        
+        function showMessage(message, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            messageElement.className = 'message ' + type;
+            messageElement.style.display = 'block';
+        }
+        
+        function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                showMessage('Por favor, preencha todos os campos', 'error');
+                return;
+            }
+            
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Login bem-sucedido! Redirecionando...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/Site.html';
+                    }, 1500);
+                } else {
+                    showMessage(data.message || 'Email ou senha incorretos', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erro ao fazer login. Tente novamente.', 'error');
+                console.error('Erro:', error);
+            });
+        }
+        
+        function register() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            if (!name || !email || !password) {
+                showMessage('Por favor, preencha todos os campos', 'error');
+                return;
+            }
+            
+            fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Registro bem-sucedido! Agora você pode fazer login.', 'success');
+                    setTimeout(() => {
+                        toggleForm('login');
+                    }, 1500);
+                } else {
+                    showMessage(data.message || 'Erro ao registrar. Tente novamente.', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erro ao registrar. Tente novamente.', 'error');
+                console.error('Erro:', error);
+            });
+        }
+    </script>
+</body>
+</html>
